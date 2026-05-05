@@ -8,6 +8,7 @@ use App\Helpers\Response;
 use App\Models\Admin;
 use Firebase\JWT\JWT;
 use JsonException;
+use Throwable;
 
 final class AuthController
 {
@@ -23,41 +24,45 @@ final class AuthController
     {
         try {
             $payload = $this->jsonBody();
+            $email = trim((string) ($payload['email'] ?? ''));
+            $password = (string) ($payload['password'] ?? '');
+            $admin = $this->admins->findByEmail($email);
+
+            if ($admin === null || !password_verify($password, $admin['password_hash'])) {
+                $this->invalidCredentials();
+                return;
+            }
+
+            $issuedAt = time();
+            $expiresAt = $issuedAt + self::TOKEN_TTL_SECONDS;
+
+            $token = JWT::encode([
+                'sub' => $admin['id'],
+                'email' => $admin['email'],
+                'iat' => $issuedAt,
+                'exp' => $expiresAt,
+            ], $this->jwtSecret, 'HS256');
+
+            Response::json([
+                'token' => $token,
+                'expires_in' => self::TOKEN_TTL_SECONDS,
+            ]);
         } catch (JsonException) {
             $this->invalidCredentials();
-            return;
+        } catch (Throwable) {
+            $this->serverError();
         }
-
-        $email = trim((string) ($payload['email'] ?? ''));
-        $password = (string) ($payload['password'] ?? '');
-        $admin = $this->admins->findByEmail($email);
-
-        if ($admin === null || !password_verify($password, $admin['password_hash'])) {
-            $this->invalidCredentials();
-            return;
-        }
-
-        $issuedAt = time();
-        $expiresAt = $issuedAt + self::TOKEN_TTL_SECONDS;
-
-        $token = JWT::encode([
-            'sub' => $admin['id'],
-            'email' => $admin['email'],
-            'iat' => $issuedAt,
-            'exp' => $expiresAt,
-        ], $this->jwtSecret, 'HS256');
-
-        Response::json([
-            'token' => $token,
-            'expires_in' => self::TOKEN_TTL_SECONDS,
-        ]);
     }
 
     public function logout(): void
     {
-        Response::json([
-            'success' => true,
-        ]);
+        try {
+            Response::json([
+                'success' => true,
+            ]);
+        } catch (Throwable) {
+            $this->serverError();
+        }
     }
 
     /**
@@ -78,5 +83,13 @@ final class AuthController
             'success' => false,
             'message' => 'Invalid credentials',
         ], 401);
+    }
+
+    private function serverError(): void
+    {
+        Response::json([
+            'success' => false,
+            'message' => 'Server error',
+        ], 500);
     }
 }

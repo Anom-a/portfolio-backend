@@ -29,31 +29,24 @@ final class EmailService
             'html' => $this->htmlBody($message),
         ];
 
-        $ch = curl_init(self::RESEND_ENDPOINT);
-
-        if ($ch === false) {
-            throw new RuntimeException('Unable to initialize email request.');
-        }
-
-        curl_setopt_array($ch, [
-            CURLOPT_POST => true,
-            CURLOPT_HTTPHEADER => [
-                'Authorization: Bearer ' . $this->apiKey,
-                'Content-Type: application/json',
+        $context = stream_context_create([
+            'http' => [
+                'method' => 'POST',
+                'header' => [
+                    'Authorization: Bearer ' . $this->apiKey,
+                    'Content-Type: application/json',
+                ],
+                'content' => json_encode($payload, JSON_THROW_ON_ERROR),
+                'ignore_errors' => true,
+                'timeout' => 10,
             ],
-            CURLOPT_POSTFIELDS => json_encode($payload, JSON_THROW_ON_ERROR),
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_TIMEOUT => 10,
         ]);
 
-        $response = curl_exec($ch);
-        $statusCode = (int) curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
-        $error = curl_error($ch);
-
-        curl_close($ch);
+        $response = file_get_contents(self::RESEND_ENDPOINT, false, $context);
+        $statusCode = $this->responseStatusCode($http_response_header ?? []);
 
         if ($response === false || $statusCode < 200 || $statusCode >= 300) {
-            throw new RuntimeException('Resend API request failed: ' . ($error ?: (string) $response));
+            throw new RuntimeException('Resend API request failed: ' . (string) $response);
         }
     }
 
@@ -77,5 +70,19 @@ final class EmailService
             <hr>
             <p>{$body}</p>
         HTML;
+    }
+
+    /**
+     * @param list<string> $headers
+     */
+    private function responseStatusCode(array $headers): int
+    {
+        $statusLine = $headers[0] ?? '';
+
+        if (preg_match('/^HTTP\/\S+\s+(\d{3})/', $statusLine, $matches)) {
+            return (int) $matches[1];
+        }
+
+        return 0;
     }
 }

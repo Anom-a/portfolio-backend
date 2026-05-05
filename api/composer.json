@@ -1,12 +1,12 @@
 {
   "name": "anomabebe/portfolio-contact-api",
-  "description": "Framework-free PHP 8.2 contact form API.",
+  "description": "Framework-free PHP 8.1 contact form API.",
   "type": "project",
   "license": "proprietary",
   "require": {
     "firebase/php-jwt": "^6.0",
-    "php": "^8.2",
-    "ext-curl": "*",
+    "php": "^8.1",
+    "ext-mbstring": "*",
     "ext-pdo": "*"
   },
   "autoload": {

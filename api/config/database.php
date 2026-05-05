@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 $env = $_ENV;
 
+if (!in_array('mysql', PDO::getAvailableDrivers(), true)) {
+    throw new RuntimeException('PDO MySQL driver is not installed. Install php8.1-mysql for MySQL support.');
+}
+
 $dsn = sprintf(
     'mysql:host=%s;dbname=%s;charset=utf8mb4',
     $env['DB_HOST'],

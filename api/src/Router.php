@@ -9,7 +9,7 @@ use App\Helpers\Response;
 final class Router
 {
     /**
-     * @var array<string, array<string, callable>>
+     * @var array<string, list<array{path: string, pattern: string, handler: callable}>>
      */
     private array $routes = [];
 
@@ -22,7 +22,22 @@ final class Router
 
     public function post(string $path, callable $handler): void
     {
-        $this->routes['POST'][$this->normalizePath($path)] = $handler;
+        $this->addRoute('POST', $path, $handler);
+    }
+
+    public function get(string $path, callable $handler): void
+    {
+        $this->addRoute('GET', $path, $handler);
+    }
+
+    public function patch(string $path, callable $handler): void
+    {
+        $this->addRoute('PATCH', $path, $handler);
+    }
+
+    public function delete(string $path, callable $handler): void
+    {
+        $this->addRoute('DELETE', $path, $handler);
     }
 
     public function dispatch(string $method, string $path): void
@@ -30,9 +45,9 @@ final class Router
         $method = strtoupper($method);
         $path = $this->normalizePath($path);
 
-        $handler = $this->routes[$method][$path] ?? null;
+        $route = $this->matchRoute($method, $path);
 
-        if ($handler === null) {
+        if ($route === null) {
             Response::json([
                 'success' => false,
                 'message' => 'Not found',
@@ -48,7 +63,41 @@ final class Router
             }
         }
 
-        $handler();
+        ($route['handler'])(...$route['params']);
+    }
+
+    private function addRoute(string $method, string $path, callable $handler): void
+    {
+        $path = $this->normalizePath($path);
+
+        $this->routes[strtoupper($method)][] = [
+            'path' => $path,
+            'pattern' => $this->routePattern($path),
+            'handler' => $handler,
+        ];
+    }
+
+    /**
+     * @return array{handler: callable, params: list<string>}|null
+     */
+    private function matchRoute(string $method, string $path): ?array
+    {
+        foreach ($this->routes[$method] ?? [] as $route) {
+            if (!preg_match($route['pattern'], $path, $matches)) {
+                continue;
+            }
+
+            return [
+                'handler' => $route['handler'],
+                'params' => array_values(array_filter(
+                    $matches,
+                    static fn (string|int $key): bool => is_string($key),
+                    ARRAY_FILTER_USE_KEY
+                )),
+            ];
+        }
+
+        return null;
     }
 
     private function normalizePath(string $path): string
@@ -62,5 +111,23 @@ final class Router
     {
         return str_starts_with($path, '/api/admin/')
             && $path !== '/api/admin/login';
+    }
+
+    private function routePattern(string $path): string
+    {
+        $segments = array_map(
+            static function (string $segment): string {
+                if (preg_match('/^\{([A-Za-z_][A-Za-z0-9_]*)}$/', $segment, $matches)) {
+                    return '(?P<' . $matches[1] . '>[^/]+)';
+                }
+
+                return preg_quote($segment, '#');
+            },
+            explode('/', trim($path, '/'))
+        );
+
+        $pattern = '/' . implode('/', $segments);
+
+        return '#^' . $pattern . '$#';
     }
 }
