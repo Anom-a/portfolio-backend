@@ -1,0 +1,16 @@
+{
+  "name": "anomabebe/portfolio-contact-api",
+  "description": "Framework-free PHP 8.2 contact form API.",
+  "type": "project",
+  "license": "proprietary",
+  "require": {
+    "php": "^8.2",
+    "ext-curl": "*",
+    "ext-pdo": "*"
+  },
+  "autoload": {
+    "psr-4": {
+      "App\\": "src/"
+    }
+  }
+}

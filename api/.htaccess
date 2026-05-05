@@ -1,0 +1,15 @@
+Options -Indexes
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # Never expose application internals directly.
+    RewriteRule ^(src|config)(/|$) - [F,L]
+
+    # Let existing files and folders be served normally.
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+
+    # Route API requests through the front controller.
+    RewriteRule ^ index.php [QSA,L]
+</IfModule>
