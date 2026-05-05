@@ -41,6 +41,8 @@ $required = [
     'DB_PASS',
     'RESEND_API_KEY',
     'ADMIN_EMAIL',
+    'ADMIN_PASSWORD',
+    'JWT_SECRET',
     'APP_URL',
 ];
 
@@ -48,6 +50,10 @@ foreach ($required as $key) {
     if (($variables[$key] ?? '') === '') {
         throw new RuntimeException("Missing required environment variable: {$key}");
     }
+}
+
+if (strlen($variables['JWT_SECRET']) < 32) {
+    throw new RuntimeException('JWT_SECRET must be at least 32 characters.');
 }
 
 return $variables;

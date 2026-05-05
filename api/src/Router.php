@@ -13,6 +13,13 @@ final class Router
      */
     private array $routes = [];
 
+    private mixed $adminMiddleware = null;
+
+    public function setAdminMiddleware(callable $middleware): void
+    {
+        $this->adminMiddleware = $middleware;
+    }
+
     public function post(string $path, callable $handler): void
     {
         $this->routes['POST'][$this->normalizePath($path)] = $handler;
@@ -33,6 +40,14 @@ final class Router
             return;
         }
 
+        if ($this->isProtectedAdminRoute($path) && is_callable($this->adminMiddleware)) {
+            $authorized = ($this->adminMiddleware)();
+
+            if ($authorized === false) {
+                return;
+            }
+        }
+
         $handler();
     }
 
@@ -41,5 +56,11 @@ final class Router
         $normalized = '/' . trim($path, '/');
 
         return $normalized === '/' ? '/' : $normalized;
+    }
+
+    private function isProtectedAdminRoute(string $path): bool
+    {
+        return str_starts_with($path, '/api/admin/')
+            && $path !== '/api/admin/login';
     }
 }

@@ -3,6 +3,9 @@
 declare(strict_types=1);
 
 use App\Controllers\ContactController;
+use App\Controllers\AuthController;
+use App\Middleware\JwtMiddleware;
+use App\Models\Admin;
 use App\Models\Message;
 use App\Router;
 use App\Services\EmailService;
@@ -22,7 +25,7 @@ if ($allowedOrigin !== '' && $requestOrigin === $allowedOrigin) {
 }
 
 header('Access-Control-Allow-Methods: POST, OPTIONS');
-header('Access-Control-Allow-Headers: Content-Type');
+header('Access-Control-Allow-Headers: Content-Type, Authorization');
 header('Content-Type: application/json; charset=utf-8');
 
 if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'OPTIONS') {
@@ -31,6 +34,8 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'OPTIONS') {
 }
 
 $router = new Router();
+$router->setAdminMiddleware([new JwtMiddleware($env['JWT_SECRET']), 'handle']);
+
 $contactController = new ContactController(
     new Message($pdo),
     new EmailService(
@@ -40,8 +45,14 @@ $contactController = new ContactController(
     ),
     new RateLimiter()
 );
+$authController = new AuthController(
+    new Admin($pdo),
+    $env['JWT_SECRET']
+);
 
 $router->post('/api/contact', [$contactController, 'store']);
+$router->post('/api/admin/login', [$authController, 'login']);
+$router->post('/api/admin/logout', [$authController, 'logout']);
 $router->dispatch(
     $_SERVER['REQUEST_METHOD'] ?? 'GET',
     parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/'
