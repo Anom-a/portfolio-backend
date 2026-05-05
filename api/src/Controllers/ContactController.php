@@ -5,10 +5,12 @@ declare(strict_types=1);
 namespace App\Controllers;
 
 use App\Helpers\Response;
+use App\Helpers\Sanitizer;
 use App\Helpers\Validator;
 use App\Models\Message;
 use App\Services\EmailService;
 use App\Services\RateLimiter;
+use App\Support\ErrorHandler;
 use JsonException;
 use Throwable;
 
@@ -45,6 +47,8 @@ final class ContactController
             return;
         }
 
+        $payload = Sanitizer::strings($payload);
+        $payload['email'] = Sanitizer::email((string) ($payload['email'] ?? ''));
         $errors = Validator::contact($payload);
 
         if ($errors !== []) {
@@ -66,7 +70,8 @@ final class ContactController
         try {
             $this->messages->create($message);
             $this->emailService->sendContactNotification($message);
-        } catch (Throwable) {
+        } catch (Throwable $exception) {
+            ErrorHandler::log($exception);
             Response::json([
                 'success' => false,
                 'message' => 'Unable to send message',

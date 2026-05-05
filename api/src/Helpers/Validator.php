@@ -12,6 +12,8 @@ final class Validator
      */
     public static function contact(array $data): array
     {
+        $data = Sanitizer::strings($data);
+        $data['email'] = Sanitizer::email((string) ($data['email'] ?? ''));
         $errors = [];
 
         foreach (['name', 'email', 'subject', 'message'] as $field) {

@@ -5,9 +5,11 @@ declare(strict_types=1);
 namespace App\Controllers;
 
 use App\Helpers\Response;
+use App\Helpers\Sanitizer;
 use App\Models\Admin;
 use Firebase\JWT\JWT;
 use JsonException;
+use App\Support\ErrorHandler;
 use Throwable;
 
 final class AuthController
@@ -23,8 +25,8 @@ final class AuthController
     public function login(): void
     {
         try {
-            $payload = $this->jsonBody();
-            $email = trim((string) ($payload['email'] ?? ''));
+            $payload = Sanitizer::strings($this->jsonBody());
+            $email = Sanitizer::email((string) ($payload['email'] ?? ''));
             $password = (string) ($payload['password'] ?? '');
             $admin = $this->admins->findByEmail($email);
 
@@ -49,7 +51,8 @@ final class AuthController
             ]);
         } catch (JsonException) {
             $this->invalidCredentials();
-        } catch (Throwable) {
+        } catch (Throwable $exception) {
+            ErrorHandler::log($exception);
             $this->serverError();
         }
     }
@@ -60,7 +63,8 @@ final class AuthController
             Response::json([
                 'success' => true,
             ]);
-        } catch (Throwable) {
+        } catch (Throwable $exception) {
+            ErrorHandler::log($exception);
             $this->serverError();
         }
     }

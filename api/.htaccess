@@ -7,8 +7,12 @@ Options -Indexes
 <IfModule mod_rewrite.c>
     RewriteEngine On
 
+    RewriteCond %{HTTPS} off
+    RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [R=301,L]
+
     # Never expose application internals directly.
-    RewriteRule ^(src|config)(/|$) - [F,L]
+    RewriteRule ^(src|config|logs|migrations)(/|$) - [F,L]
+    RewriteRule ^(\.env|composer\.(json|lock)|\.gitignore)$ - [F,L]
 
     # Let existing files and folders be served normally.
     RewriteCond %{REQUEST_FILENAME} !-f

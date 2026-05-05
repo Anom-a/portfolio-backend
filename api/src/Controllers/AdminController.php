@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Controllers;
 
 use App\Helpers\Response;
+use App\Helpers\Sanitizer;
+use App\Support\ErrorHandler;
 use JsonException;
 use PDO;
 use Throwable;
@@ -56,7 +58,8 @@ final class AdminController
                     'total_pages' => (int) ceil($total / $limit),
                 ],
             ]);
-        } catch (Throwable) {
+        } catch (Throwable $exception) {
+            ErrorHandler::log($exception);
             $this->serverError();
         }
     }
@@ -78,7 +81,8 @@ final class AdminController
             }
 
             Response::json($this->formatMessage($message));
-        } catch (Throwable) {
+        } catch (Throwable $exception) {
+            ErrorHandler::log($exception);
             $this->serverError();
         }
     }
@@ -86,7 +90,7 @@ final class AdminController
     public function updateReadStatus(string $id): void
     {
         try {
-            $payload = $this->jsonBody();
+            $payload = Sanitizer::strings($this->jsonBody());
             $isRead = (int) ($payload['is_read'] ?? -1);
 
             if (!in_array($isRead, [0, 1], true)) {
@@ -115,7 +119,8 @@ final class AdminController
                 'success' => false,
                 'message' => 'Invalid JSON body',
             ], 422);
-        } catch (Throwable) {
+        } catch (Throwable $exception) {
+            ErrorHandler::log($exception);
             $this->serverError();
         }
     }
@@ -128,7 +133,8 @@ final class AdminController
             $statement->execute();
 
             http_response_code(204);
-        } catch (Throwable) {
+        } catch (Throwable $exception) {
+            ErrorHandler::log($exception);
             $this->serverError();
         }
     }
@@ -153,7 +159,8 @@ final class AdminController
                 'today' => (int) ($stats['today'] ?? 0),
                 'this_week' => (int) ($stats['this_week'] ?? 0),
             ]);
-        } catch (Throwable) {
+        } catch (Throwable $exception) {
+            ErrorHandler::log($exception);
             $this->serverError();
         }
     }
@@ -165,8 +172,8 @@ final class AdminController
     {
         $where = [];
         $params = [];
-        $status = (string) ($_GET['status'] ?? 'all');
-        $search = trim((string) ($_GET['search'] ?? ''));
+        $status = trim(strip_tags((string) ($_GET['status'] ?? 'all')));
+        $search = trim(strip_tags((string) ($_GET['search'] ?? '')));
 
         if ($status === 'unread') {
             $where[] = 'is_read = :is_read';
